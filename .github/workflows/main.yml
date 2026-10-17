@@ -151,4 +151,157 @@ steps:
     with:
       name: Noor-Aladdad-APK
       path: android/app/build/outputs/apk/debug/app-debug.apk
+      if-no-files-found: errorname: Build Noor Aladdad APK
+
+on:
+workflow_dispatch:
+push:
+branches:
+- main
+
+permissions:
+contents: read
+
+jobs:
+build:
+runs-on: ubuntu-latest
+
+steps:
+  - name: Download project
+    uses: actions/checkout@v4
+
+  - name: Set up Java
+    uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: '17'
+
+  - name: Set up Gradle
+    uses: gradle/actions/setup-gradle@v4
+    with:
+      gradle-version: '8.9'
+
+  - name: Prepare Android project
+    shell: bash
+    run: |
+      set -e
+      test -f index.html
+
+      mkdir -p android/app/src/main/assets
+      mkdir -p android/app/src/main/java/com/nooraladdad/app
+
+      cp index.html android/app/src/main/assets/index.html
+
+      cat > android/settings.gradle <<'EOF'
+      pluginManagement {
+          repositories {
+              google()
+              mavenCentral()
+              gradlePluginPortal()
+          }
+      }
+      dependencyResolutionManagement {
+          repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+          repositories {
+              google()
+              mavenCentral()
+          }
+      }
+      rootProject.name = "NoorAladdad"
+      include(":app")
+      EOF
+
+      cat > android/build.gradle <<'EOF'
+      plugins {
+          id 'com.android.application' version '8.7.3' apply false
+      }
+      EOF
+
+      cat > android/gradle.properties <<'EOF'
+      org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+      android.useAndroidX=true
+      EOF
+
+      cat > android/app/build.gradle <<'EOF'
+      plugins {
+          id 'com.android.application'
+      }
+
+      android {
+          namespace 'com.nooraladdad.app'
+          compileSdk 35
+
+          defaultConfig {
+              applicationId 'com.nooraladdad.app'
+              minSdk 23
+              targetSdk 28
+              versionCode 1
+              versionName '1.0'
+          }
+      }
+      EOF
+
+      cat > android/app/src/main/AndroidManifest.xml <<'EOF'
+      <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <application
+              android:theme="@android:style/Theme.Material.Light.NoActionBar"
+              android:label="عالم العدد"
+              android:usesCleartextTraffic="true"
+              android:hardwareAccelerated="true">
+              <activity
+                  android:name="com.nooraladdad.app.MainActivity"
+                  android:exported="true">
+                  <intent-filter>
+                      <action android:name="android.intent.action.MAIN" />
+                      <category android:name="android.intent.category.LAUNCHER" />
+                  </intent-filter>
+              </activity>
+          </application>
+      </manifest>
+      EOF
+
+      cat > android/app/src/main/java/com/nooraladdad/app/MainActivity.java <<'EOF'
+      package com.nooraladdad.app;
+
+      import android.app.Activity;
+      import android.os.Bundle;
+      import android.webkit.WebView;
+      import android.webkit.WebSettings;
+      import android.webkit.WebViewClient;
+
+      public class MainActivity extends Activity {
+          @Override
+          protected void onCreate(Bundle savedInstanceState) {
+              super.onCreate(savedInstanceState);
+
+              WebView webView = new WebView(this);
+              WebSettings settings = webView.getSettings();
+              settings.setJavaScriptEnabled(true);
+              settings.setDomStorageEnabled(true);
+              webView.setWebViewClient(new WebViewClient());
+
+              setContentView(webView);
+              webView.loadUrl("file:///android_asset/index.html");
+          }
+
+          @Override
+          public void onBackPressed() {
+              setContentView(new WebView(this));
+              super.onBackPressed();
+          }
+      }
+      EOF
+
+  - name: Build APK
+    shell: bash
+    run: |
+      set -e
+      cd android
+      gradle assembleDebug
+
+  - name: Upload APK
+    uses: actions/upload-artifact@v4
+    with:
+      name: Noor-Aladdad-APK
+      path: android/app/build/outputs/apk/debug/app-debug.apk
       if-no-files-found: error
