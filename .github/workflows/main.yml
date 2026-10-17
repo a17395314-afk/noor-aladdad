@@ -1,0 +1,30 @@
+name: Build Noor Aladdad
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get project files
+        uses: actions/checkout@v4
+
+      - name: Prepare website
+        run: |
+          test -f index.html
+          mkdir -p output
+          cp index.html output/index.html
+
+      - name: Save website artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Noor-Aladdad-Website
+          path: output/
